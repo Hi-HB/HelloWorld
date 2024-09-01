@@ -4,7 +4,7 @@ import os
 
 def install(package):
     with open(os.devnull, 'w') as devnull:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package], stdout=devnull, stderr=devnull)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package], stderr=devnull)
 
 # Install required packages
 install('pywin32')
